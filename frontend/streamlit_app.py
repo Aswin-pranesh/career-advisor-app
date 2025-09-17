@@ -1,24 +1,22 @@
 # frontend/streamlit_app.py
-import os, requests
 import streamlit as st
+import requests
 
-BACKEND_URL = os.getenv("BACKEND_URL", "https://your-backend.onrender.com")
+st.title("🎓 Personalized Career & Skills Advisor")
+st.write("Enter your skill below to get AI-powered career advice:")
 
-st.title("🎯 Personalized Career & Skills Advisor")
-user_text = st.text_area("Describe your background & interests:")
+skill = st.text_input("Your Skill", "")
 
 if st.button("Get Advice"):
-    with st.spinner("Generating..."):
-        r = requests.post(f"{BACKEND_URL}/advise", json={"text": user_text}, timeout=60)
-        if r.ok:
-            data = r.json()
-            st.subheader("Summary")
-            st.write(data.get("summary"))
-            st.subheader("Career paths")
-            for p in data.get("career_paths", []):
-                st.markdown(f"**{p['title']}** — {p.get('why','')}")
-            st.subheader("Action Plan")
-            for a in data.get("action_plan", []):
-                st.write("-", a)
-        else:
-            st.error("Backend error: " + r.text)
+    if skill.strip():
+        try:
+            backend_url = "https://career-advisor-backend.onrender.com/career-advice"
+            response = requests.get(backend_url, params={"skill": skill})
+            if response.status_code == 200:
+                st.success(response.json()["advice"])
+            else:
+                st.error("Error fetching advice. Please try again.")
+        except Exception as e:
+            st.error(f"Failed to connect to backend: {e}")
+    else:
+        st.warning("Please enter a skill before clicking the button.")
