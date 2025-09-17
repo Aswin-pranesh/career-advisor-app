@@ -1,34 +1,25 @@
 # backend/app.py
-import os, json, re
 from fastapi import FastAPI
-from pydantic import BaseModel
-import openai
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
+import os
+from openai import OpenAI
 
 app = FastAPI()
 
-class Query(BaseModel):
-    text: str
+# Load API key from environment variable
+api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=api_key)
 
-PROMPT_TEMPLATE = """You are an expert career advisor.
-Input: {input}
-Return JSON only using this schema:
-{"summary":"", "career_paths":[...], "skills":[...], "learning_resources":[...], "action_plan":[...]}
-"""
+@app.get("/")
+def root():
+    return {"message": "Career Advisor Backend is running!"}
 
-@app.post("/advise")
-async def advise(q: Query):
-    prompt = PROMPT_TEMPLATE.format(input=q.text)
-    resp = openai.ChatCompletion.create(
+@app.get("/career-advice")
+def get_career_advice(skill: str):
+    response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=600,
-        temperature=0.6
+        messages=[
+            {"role": "system", "content": "You are a helpful career advisor."},
+            {"role": "user", "content": f"Suggest 3 career paths for someone skilled in {skill}."}
+        ]
     )
-    raw = resp.choices[0].message.content.strip()
-    try:
-        return json.loads(raw)
-    except Exception:
-        m = re.search(r"\{.*\}", raw, re.S)
-        return json.loads(m.group(0)) if m else {"error": "could not parse model output", "raw": raw}
+    return {"advice": response.choices[0].message["content"]}
